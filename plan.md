@@ -34,10 +34,10 @@ Out, on purpose:
 ## Phases
 
 ### Phase 1 — skeleton live (layers 2+6+7), BEFORE any AI code
-- [ ] app/config.py: pydantic-settings (API_KEY, BASE_URL, LLM_MODEL, ACCESS_CODE, MOCK_LLM=false, SESSION_TTL_SECONDS=3600, ENVIRONMENT, LOG_LEVEL) behind get_settings(); nothing else reads os.environ
-- [ ] app/main.py: create_app() factory — fails fast if API_KEY missing, structlog configured, nothing runs at import time except create_app()
-- [ ] GET /health (no access code required)
-- [ ] Static mount serving frontend/dist (placeholder build for now)
+- [x] app/config.py: pydantic-settings (API_KEY, BASE_URL, LLM_MODEL, ACCESS_CODE, MOCK_LLM=false, SESSION_TTL_SECONDS=3600, ENVIRONMENT, LOG_LEVEL) behind get_settings(); nothing else reads os.environ — done, lru_cache singleton, min_length=1 on the required fields
+- [x] app/main.py: create_app() factory — fails fast if API_KEY missing, structlog configured, nothing runs at import time except create_app() — done, verified: empty API_KEY raises ValidationError at import
+- [x] GET /health (no access code required) — done, lives in app/api/routes.py, curl returns {"status":"ok"} 200
+- [x] Static mount serving frontend/dist (placeholder build for now) — done, stock Vite build mounted at /, warns if dist missing
 - [ ] Dockerfile, two stages: node builds the React app → python copies the static files and runs uvicorn on $PORT (never hardcoded)
 - [ ] Render web service created in the dashboard (manual, one-time): connect repo, runtime Docker, env vars API_KEY / BASE_URL / LLM_MODEL / ACCESS_CODE
 - [ ] Checkpoint: /health returns 200 on the public onrender.com URL
