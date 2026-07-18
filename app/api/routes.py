@@ -41,7 +41,7 @@ def require_access_code(
     x_access_code: Annotated[str | None, Header()] = None,
 ) -> None:
     if x_access_code is None or not secrets.compare_digest(
-        x_access_code, settings.access_code
+        x_access_code.encode(), settings.access_code.encode()
     ):
         raise ApiError(401, "ACCESS_DENIED", "Missing or invalid access code.")
 
@@ -67,12 +67,12 @@ def _run_chat_turn(
     knowledge: KnowledgeSource,
     sessions: SessionManager,
 ) -> ChatResponse:
-    sessions.add_message(session, "user", message)
     system_prompt = build_system_prompt(knowledge.retrieve(message))
     history = [
         {"role": m.role, "content": m.content}
-        for m in session.messages[-HISTORY_LIMIT:]
+        for m in session.messages[-(HISTORY_LIMIT - 1):]
     ]
+    history.append({"role": "user", "content": message})
     try:
         result = ai.get_response(
             [{"role": "system", "content": system_prompt}, *history]
@@ -86,6 +86,9 @@ def _run_chat_turn(
             502, "AI_UNAVAILABLE", "The assistant is unavailable right now; try again shortly."
         ) from exc
 
+    # Saved only after the model answered: a failed call must leave the
+    # session exactly as it was, or a retry would duplicate the user turn.
+    sessions.add_message(session, "user", message)
     sessions.add_message(session, "assistant", result.reply)
     structlog.get_logger().info(
         "chat_turn",

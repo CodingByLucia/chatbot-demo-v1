@@ -72,7 +72,7 @@ Out, on purpose:
 - [ ] Record anything found in Known issues below
 
 ## Known issues
-(none yet)
+- Fallback card doesn't survive a page refresh: GET /api/v1/chat/{id} returns only role/content, so a rehydrated fallback reply renders as a plain bubble without the "Book a call" card (reviewer finding, 2026-07-18). Fix needs fallback state persisted on the session Message model + exposed in MessageOut — Paola to decide; natural fit for phase 3's fallback work
 
 ## With more time (v2)
 - RAG over the unbounded content (articles, case studies, podcast, events): crawl > chunk > embed, dropped in behind the layer 4 retrieve(query) seam — callers unchanged

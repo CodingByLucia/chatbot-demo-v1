@@ -175,6 +175,42 @@ def test_rate_limit_maps_to_429(api):
     assert response.json()["code"] == "RATE_LIMITED"
 
 
+def test_failed_ai_call_leaves_session_history_unchanged(api):
+    client, fake_ai, _ = api
+    chat_id = client.post(
+        "/api/v1/chat", json={"message": "hi"}, headers=HEADERS
+    ).json()["chat_id"]
+    fake_ai.error = AIUnavailableError("down")
+    response = client.post(
+        f"/api/v1/chat/{chat_id}/messages", json={"message": "again"}, headers=HEADERS
+    )
+    assert response.status_code == 502
+
+    fake_ai.error = None
+    history = client.get(f"/api/v1/chat/{chat_id}", headers=HEADERS).json()
+    assert [m["role"] for m in history["messages"]] == ["user", "assistant"]
+
+
+def test_unmatched_path_keeps_error_shape(api):
+    client, _, _ = api
+    response = client.get("/api/v1/nope", headers=HEADERS)
+    assert response.status_code == 404
+    body = response.json()
+    assert body["code"] == "NOT_FOUND"
+    assert set(body) == {"code", "message"}
+
+
+def test_unexpected_exception_keeps_error_shape(api):
+    client, fake_ai, _ = api
+    fake_ai.error = ValueError("boom")
+    quiet = TestClient(client.app, raise_server_exceptions=False)
+    response = quiet.post("/api/v1/chat", json={"message": "hi"}, headers=HEADERS)
+    assert response.status_code == 500
+    body = response.json()
+    assert body["code"] == "INTERNAL_ERROR"
+    assert set(body) == {"code", "message"}
+
+
 def test_blank_message_is_422_invalid_request(api):
     client, _, _ = api
     response = client.post("/api/v1/chat", json={"message": "   "}, headers=HEADERS)
