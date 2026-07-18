@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { clearAccessCode, setAccessCode, verifyAccessCode } from './api.js'
+import logo from './assets/cadre-logo.svg'
 
 // Access screen shown before the chat. The submitted code is checked against
 // the server right away: a wrong code stays here with an error, a valid one
@@ -35,6 +36,7 @@ function Gate({ onEnter, error }) {
 
   return (
     <div className="gate">
+      <img src={logo} alt="Cadre AI" className="gate-logo" />
       <h1>Cadre Support</h1>
       <p>Enter the access code to start chatting.</p>
       {shownError && <p className="gate-error">{shownError}</p>}

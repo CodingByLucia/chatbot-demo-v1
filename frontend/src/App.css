@@ -48,6 +48,19 @@
   letter-spacing: 0.2px;
 }
 
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.header-logo {
+  width: 20px;
+  height: auto;
+  display: block;
+}
+
 /* Dismissible error banner */
 .banner {
   display: flex;
@@ -312,6 +325,13 @@
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(12, 4, 7, 0.06);
   text-align: center;
+}
+
+.gate-logo {
+  display: block;
+  width: 48px;
+  height: auto;
+  margin: 0 auto 14px;
 }
 
 .gate h1 {

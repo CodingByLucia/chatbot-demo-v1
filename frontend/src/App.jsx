@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Gate from './Gate.jsx'
 import FallbackCard from './FallbackCard.jsx'
+import logo from './assets/cadre-logo.svg'
 import {
   clearAccessCode,
   clearStoredChatId,
@@ -153,7 +154,10 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>Cadre Support</h1>
+        <div className="header-brand">
+          <img src={logo} alt="Cadre AI" className="header-logo" />
+          <h1>Cadre Support</h1>
+        </div>
         <button
           type="button"
           className="new-chat"
