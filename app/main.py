@@ -5,7 +5,8 @@ import structlog
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import router
+from app.api.errors import register_error_handlers
+from app.api.routes import api_router, router
 from app.config import Settings, get_settings
 from app.data.repository import get_knowledge_source
 
@@ -38,7 +39,9 @@ def create_app() -> FastAPI:
     get_knowledge_source()  # missing KB file or empty section raises here too
 
     app = FastAPI(title="Cadre Support Bot")
+    register_error_handlers(app)
     app.include_router(router)
+    app.include_router(api_router)
 
     if FRONTEND_DIST.is_dir():
         app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="ui")
