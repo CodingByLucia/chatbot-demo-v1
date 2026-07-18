@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import Gate from './Gate.jsx'
 import FallbackCard from './FallbackCard.jsx'
 import {
@@ -172,7 +174,25 @@ function App() {
         )}
         {messages.map((message, index) => (
           <div key={index} className={`message ${message.role}`}>
-            <div className={`bubble ${message.role}`}>{message.content}</div>
+            <div className={`bubble ${message.role}`}>
+              {message.role === 'assistant' ? (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    // Links leave the chat, so they open in a new tab.
+                    a: ({ children, ...props }) => (
+                      <a {...props} target="_blank" rel="noopener noreferrer">
+                        {children}
+                      </a>
+                    ),
+                  }}
+                >
+                  {message.content}
+                </ReactMarkdown>
+              ) : (
+                message.content
+              )}
+            </div>
             {message.fallback && (
               <FallbackCard
                 chatId={chatId}

@@ -120,6 +120,47 @@
   background: var(--bot-bubble);
   color: var(--text);
   border-bottom-left-radius: 4px;
+  /* Markdown blocks bring their own spacing; pre-wrap would double it. */
+  white-space: normal;
+}
+
+/* Rendered markdown inside assistant bubbles */
+.bubble.assistant p,
+.bubble.assistant ul,
+.bubble.assistant ol {
+  margin: 0 0 8px;
+}
+
+.bubble.assistant p:last-child,
+.bubble.assistant ul:last-child,
+.bubble.assistant ol:last-child {
+  margin-bottom: 0;
+}
+
+.bubble.assistant ul,
+.bubble.assistant ol {
+  padding-left: 20px;
+}
+
+.bubble.assistant li {
+  margin: 2px 0;
+}
+
+.bubble.assistant a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.bubble.assistant a:hover {
+  color: var(--accent-deep);
+}
+
+.bubble.assistant code {
+  font-size: 13px;
+  background: rgba(12, 4, 7, 0.06);
+  padding: 1px 4px;
+  border-radius: 4px;
 }
 
 .bubble.thinking {

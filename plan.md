@@ -53,7 +53,7 @@ Out, on purpose:
 - [x] UI: Gate.jsx (code → sessionStorage), api.js (all fetches, X-Access-Code header, 401 → back to gate), App.jsx (messages, input, loading, error banner) — done (subagent): Cadre-branded (accent/sand palette from the site's own stylesheet), centered card, mobile-ready, no animations; failed sends restore the text into the input for retry; per Paola's mid-build note the bordered fallback card + "Book a call" button was pulled forward from phase 3 (name/email form still phase 3); npm run build + eslint clean, dist served by the running app
 - [x] UI: refresh keeps the conversation — chat_id persisted in sessionStorage, history rehydrated on load via GET /api/v1/chat/{id} (expired id clears silently, 401 bounces to the gate); "New chat" header button drops the stored id so the next message starts a fresh session (Paola's request)
 - [x] pytest: prompt contains KB + boundaries, marker parser, session TTL expiry, access gate 401, route status codes + error shape (TestClient, faked LLM client) — done: tests/test_api.py adds 12 route tests (gate, happy path, 10-message trim, fallback shape, 404/429/502/422 mapping) on top of the existing suites; 46 pass offline
-- [ ] Checkpoint: multiturn chat works locally end to end (MOCK_LLM first, then real key), tests green
+- [x] Checkpoint: multiturn chat works locally end to end (MOCK_LLM first, then real key), tests green — done: MOCK_LLM click-through in phase 2; real-key multiturn verified in phase 4 (follow-up "which other industries besides that one?" on a live chat resolved the reference from context, every industry named matched the KB verbatim)
 
 ### Phase 3 — fallback + grounding check + polish (1+2+3)
 - [x] Grounding check in ai_service: second LLM call gets answer + KB sections → GROUNDED / UNGROUNDED. Ungrounded or check errored: ship the matching KB section verbatim (keyword match on section titles; no match → fallback card) and log it. No answer ships unchecked — done: get_response(messages, sections), verdict capped at 8 tokens, fallback replies skip the check, check errors (incl. rate limit) degrade instead of raising, every degrade logged (ungrounded_reply / grounding_check_failed / ungrounded_degraded_to_*)
@@ -65,15 +65,15 @@ Out, on purpose:
 - [x] Checkpoint: pytest green + reviewer subagent pass on the phase diff — done: reviewer found no blockers, layer boundaries hold; its one should-fix (verdicts like "NOT GROUNDED" slipped past the parser) fixed + tested; 70 tests green, UI lint + build clean, flow verified live with curl under MOCK_LLM
 
 ### Phase 4 — verify (all layers)
-- [ ] Full pytest suite green
-- [ ] /verify-scenarios against the local running app with the real LLM (MOCK_LLM=false)
-- [ ] Push → Render auto-deploys; confirm env vars (MOCK_LLM never set in Render)
-- [ ] /verify-scenarios against the DEPLOYED URL — all 6 scenarios pass
-- [ ] Record anything found in Known issues below
+- [x] Full pytest suite green — 70 passed offline (.venv python)
+- [x] /verify-scenarios against the local running app with the real LLM (MOCK_LLM=false) — 2026-07-17: 6/6 PASS. Each answer graded by an independent subagent that saw only the KB + the response text; all claims traced to KB lines (incl. contact email/phone, eight-pillar Maturity Index wording, black-box data claim). Scenario 6 returned the fallback card with booking link and wrote no poem. No fixes needed
+- [ ] Push → Render auto-deploys; confirm env vars (MOCK_LLM never set in Render) — Paola's side
+- [ ] /verify-scenarios against the DEPLOYED URL — all 6 scenarios pass — blocked on the push above
+- [x] Record anything found in Known issues below — nothing new found this run; the two open known issues below stand unchanged
 
 ## Known issues
 - ~~Fallback card doesn't survive a page refresh~~ — fixed in phase 3: Message.fallback_reason persisted on the session, MessageOut exposes fallback {reason, booking_url}, the UI rebuilds the card from history on reload
-- Contact-form "sent" state is UI-local: after a page reload a fallback card shows the name/email form again even if details were already submitted (resubmitting just overwrites session.contact). Harmless for the demo; fixing it would mean exposing session.contact in the history response (reviewer nit, phase 3)
+- Contact-form "sent" state is UI-local: after a page reload a fallback card shows the name/email form again even if details were already submitted (resubmitting just overwrites session.contact). Harmless for the demo; fixing it would mean exposing session.contact in the history response
 - tests/test_api.py sits right at the ~300-line limit; the next route test should split it (e.g. tests/test_api_contact.py) per the file-size rule
 
 ## With more time (v2)
