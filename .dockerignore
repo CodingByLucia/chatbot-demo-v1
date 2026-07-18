@@ -1,0 +1,14 @@
+.git
+.venv
+.env
+.env.example
+.claude
+.gitignore
+**/__pycache__
+frontend/node_modules
+frontend/dist
+tests
+CLAUDE.md
+plan.md
+README.md
+Dockerfile
