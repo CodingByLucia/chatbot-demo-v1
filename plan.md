@@ -56,13 +56,13 @@ Out, on purpose:
 - [ ] Checkpoint: multiturn chat works locally end to end (MOCK_LLM first, then real key), tests green
 
 ### Phase 3 — fallback + grounding check + polish (1+2+3)
-- [ ] Grounding check in ai_service: second LLM call gets answer + KB sections → GROUNDED / UNGROUNDED. Ungrounded or check errored: ship the matching KB section verbatim (keyword match on section titles; no match → fallback card) and log it. No answer ships unchecked
-- [ ] Fallback card in the UI: booking link + optional name/email form
-- [ ] POST /api/v1/chat/{id}/contact {name, email}: store on the session + log
-- [ ] UI error states: banner for 502/429, gate redirect on 401, loading state
-- [ ] pytest: grounding verdict parser, KB section matcher, ungrounded degrade path, contact route
-- [ ] README: setup, env vars, endpoint table
-- [ ] Checkpoint: pytest green + reviewer subagent pass on the phase diff
+- [x] Grounding check in ai_service: second LLM call gets answer + KB sections → GROUNDED / UNGROUNDED. Ungrounded or check errored: ship the matching KB section verbatim (keyword match on section titles; no match → fallback card) and log it. No answer ships unchecked — done: get_response(messages, sections), verdict capped at 8 tokens, fallback replies skip the check, check errors (incl. rate limit) degrade instead of raising, every degrade logged (ungrounded_reply / grounding_check_failed / ungrounded_degraded_to_*)
+- [x] Fallback card in the UI: booking link + optional name/email form — done: FallbackCard.jsx (name+email form, sending/sent/error states, ACCESS_DENIED bounces to the gate), card also rebuilt on reload from persisted history
+- [x] POST /api/v1/chat/{id}/contact {name, email}: store on the session + log — done: ContactRequest validates name non-empty + email format (422 INVALID_REQUEST), Session.contact via SessionManager.set_contact() (store writes stay behind save()), contact_captured logged; verified live with curl
+- [x] UI error states: banner for 502/429, gate redirect on 401, loading state — done in phase 2's UI pass; verified this phase, gate redirect now shared (handleAccessDenied) with the contact form
+- [x] pytest: grounding verdict parser, KB section matcher, ungrounded degrade path, contact route — done: 69 tests green offline (verdict parser incl. UNGROUNDED-contains-GROUNDED trap, matcher stopwords/best-overlap/no-match, degrade to KB verbatim + to fallback card, check-error degrade, contact 200/404/422/401, history carries fallback)
+- [x] README: setup, env vars, endpoint table — done: root README.md with how-it-works, local run, env var table, endpoint + error-code tables, testing, deploy
+- [x] Checkpoint: pytest green + reviewer subagent pass on the phase diff — done: reviewer found no blockers, layer boundaries hold; its one should-fix (verdicts like "NOT GROUNDED" slipped past the parser) fixed + tested; 70 tests green, UI lint + build clean, flow verified live with curl under MOCK_LLM
 
 ### Phase 4 — verify (all layers)
 - [ ] Full pytest suite green
@@ -72,7 +72,9 @@ Out, on purpose:
 - [ ] Record anything found in Known issues below
 
 ## Known issues
-- Fallback card doesn't survive a page refresh: GET /api/v1/chat/{id} returns only role/content, so a rehydrated fallback reply renders as a plain bubble without the "Book a call" card (reviewer finding, 2026-07-18). Fix needs fallback state persisted on the session Message model + exposed in MessageOut — Paola to decide; natural fit for phase 3's fallback work
+- ~~Fallback card doesn't survive a page refresh~~ — fixed in phase 3: Message.fallback_reason persisted on the session, MessageOut exposes fallback {reason, booking_url}, the UI rebuilds the card from history on reload
+- Contact-form "sent" state is UI-local: after a page reload a fallback card shows the name/email form again even if details were already submitted (resubmitting just overwrites session.contact). Harmless for the demo; fixing it would mean exposing session.contact in the history response (reviewer nit, phase 3)
+- tests/test_api.py sits right at the ~300-line limit; the next route test should split it (e.g. tests/test_api_contact.py) per the file-size rule
 
 ## With more time (v2)
 - RAG over the unbounded content (articles, case studies, podcast, events): crawl > chunk > embed, dropped in behind the layer 4 retrieve(query) seam — callers unchanged

@@ -11,6 +11,8 @@ from app.api.schemas import (
     ChatHistoryResponse,
     ChatRequest,
     ChatResponse,
+    ContactRequest,
+    ContactResponse,
     Fallback,
     MessageOut,
 )
@@ -67,7 +69,8 @@ def _run_chat_turn(
     knowledge: KnowledgeSource,
     sessions: SessionManager,
 ) -> ChatResponse:
-    system_prompt = build_system_prompt(knowledge.retrieve(message))
+    sections = knowledge.retrieve(message)
+    system_prompt = build_system_prompt(sections)
     history = [
         {"role": m.role, "content": m.content}
         for m in session.messages[-(HISTORY_LIMIT - 1):]
@@ -75,7 +78,7 @@ def _run_chat_turn(
     history.append({"role": "user", "content": message})
     try:
         result = ai.get_response(
-            [{"role": "system", "content": system_prompt}, *history]
+            [{"role": "system", "content": system_prompt}, *history], sections
         )
     except AIRateLimitError as exc:
         raise ApiError(
@@ -89,7 +92,9 @@ def _run_chat_turn(
     # Saved only after the model answered: a failed call must leave the
     # session exactly as it was, or a retry would duplicate the user turn.
     sessions.add_message(session, "user", message)
-    sessions.add_message(session, "assistant", result.reply)
+    sessions.add_message(
+        session, "assistant", result.reply, fallback_reason=result.fallback_reason
+    )
     structlog.get_logger().info(
         "chat_turn",
         chat_id=session.id,
@@ -132,5 +137,30 @@ def get_chat(chat_id: str, sessions: SessionsDep) -> ChatHistoryResponse:
     session = _get_session_or_404(sessions, chat_id)
     return ChatHistoryResponse(
         chat_id=session.id,
-        messages=[MessageOut(role=m.role, content=m.content) for m in session.messages],
+        messages=[
+            MessageOut(
+                role=m.role,
+                content=m.content,
+                fallback=(
+                    None
+                    if m.fallback_reason is None
+                    else Fallback(
+                        reason=m.fallback_reason, booking_url=get_booking_link()
+                    )
+                ),
+            )
+            for m in session.messages
+        ],
     )
+
+
+@api_router.post("/chat/{chat_id}/contact")
+def leave_contact(
+    chat_id: str, request: ContactRequest, sessions: SessionsDep
+) -> ContactResponse:
+    session = _get_session_or_404(sessions, chat_id)
+    sessions.set_contact(session, request.name, request.email)
+    structlog.get_logger().info(
+        "contact_captured", chat_id=session.id, name=request.name, email=request.email
+    )
+    return ContactResponse()

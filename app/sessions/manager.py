@@ -3,7 +3,7 @@
 from functools import lru_cache
 
 from app.config import get_settings
-from app.sessions.models import Message, Session
+from app.sessions.models import Contact, Message, Session
 from app.sessions.store import InMemorySessionStore, SessionStore
 
 
@@ -18,11 +18,22 @@ class SessionManager:
         """None means the session is unknown or expired."""
         return self._store.get(session_id)
 
-    def add_message(self, session: Session, role: str, content: str) -> Message:
-        message = Message(role=role, content=content)
+    def add_message(
+        self,
+        session: Session,
+        role: str,
+        content: str,
+        fallback_reason: str | None = None,
+    ) -> Message:
+        message = Message(role=role, content=content, fallback_reason=fallback_reason)
         session.messages.append(message)
         self._store.save(session)
         return message
+
+    def set_contact(self, session: Session, name: str, email: str) -> Contact:
+        session.contact = Contact(name=name, email=email)
+        self._store.save(session)
+        return session.contact
 
 
 @lru_cache

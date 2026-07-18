@@ -8,11 +8,15 @@ from app.config import Settings
 from app.core.ai_service import (
     MAX_OUTPUT_TOKENS,
     MOCK_FALLBACK,
+    UNVERIFIED_REPLY,
+    VERDICT_MAX_TOKENS,
     AIRateLimitError,
     AIReply,
     AIService,
     AIUnavailableError,
+    match_section,
     parse_fallback,
+    parse_grounding_verdict,
 )
 
 
@@ -29,22 +33,24 @@ def make_settings(**overrides):
 
 
 class FakeCompletions:
-    def __init__(self, content=None, error=None):
+    """Returns (or raises) one scripted outcome per create() call, in order."""
+
+    def __init__(self, outcomes):
         self.calls = []
-        self._content = content
-        self._error = error
+        self._outcomes = list(outcomes)
 
     def create(self, **kwargs):
         self.calls.append(kwargs)
-        if self._error is not None:
-            raise self._error
-        message = SimpleNamespace(content=self._content)
+        outcome = self._outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        message = SimpleNamespace(content=outcome)
         return SimpleNamespace(choices=[SimpleNamespace(message=message)])
 
 
-def make_service(content=None, error=None):
+def make_service(*outcomes):
     service = AIService(make_settings())
-    fake = FakeCompletions(content=content, error=error)
+    fake = FakeCompletions(outcomes)
     service._client = SimpleNamespace(chat=SimpleNamespace(completions=fake))
     return service, fake
 
@@ -55,6 +61,13 @@ def sdk_error(status):
     cls = openai.RateLimitError if status == 429 else openai.APIStatusError
     return cls("boom", response=response, body=None)
 
+
+SECTIONS = [
+    SimpleNamespace(title="AI Strategy", content="45-day AI Transformation Intensive."),
+    SimpleNamespace(
+        title="Industries", content="Healthcare, insurance, financial services."
+    ),
+]
 
 MESSAGES = [{"role": "user", "content": "What does Cadre do?"}]
 
@@ -85,41 +98,136 @@ def test_parse_fallback_empty_reason_still_falls_back():
     assert result.reply == ""
 
 
+# --- grounding verdict parser ---
+
+def test_verdict_grounded_in_any_case():
+    assert parse_grounding_verdict("GROUNDED") is True
+    assert parse_grounding_verdict("grounded.") is True
+
+
+def test_verdict_ungrounded_wins_even_though_it_contains_grounded():
+    assert parse_grounding_verdict("UNGROUNDED") is False
+    assert parse_grounding_verdict("The answer is ungrounded") is False
+
+
+def test_verdict_negated_grounded_counts_as_ungrounded():
+    assert parse_grounding_verdict("NOT GROUNDED") is False
+    assert parse_grounding_verdict("The answer isn't grounded") is False
+
+
+def test_verdict_anything_unclear_counts_as_ungrounded():
+    assert parse_grounding_verdict("") is False
+    assert parse_grounding_verdict("maybe?") is False
+
+
+def test_verdict_grounded_with_extra_words_still_passes():
+    assert parse_grounding_verdict("GROUNDED - every claim checks out") is True
+
+
+# --- KB section matcher ---
+
+def test_match_section_finds_title_keyword():
+    section = match_section("Tell me about your industries", SECTIONS)
+    assert section is SECTIONS[1]
+
+
+def test_match_section_best_overlap_wins():
+    sections = [
+        SimpleNamespace(title="AI Strategy", content="s"),
+        SimpleNamespace(title="AI Strategy Engineering", content="e"),
+    ]
+    assert match_section("strategy engineering work", sections) is sections[1]
+
+
+def test_match_section_ignores_generic_words():
+    # "Cadre" and "AI" appear in most titles; alone they identify nothing.
+    assert match_section("What is Cadre AI?", SECTIONS) is None
+
+
+def test_match_section_no_overlap_returns_none():
+    assert match_section("What's the weather today?", SECTIONS) is None
+
+
 # --- get_response over a fake client ---
 
-def test_get_response_returns_parsed_reply_and_caps_tokens():
-    service, fake = make_service(content="Cadre helps with AI strategy.")
-    result = service.get_response(MESSAGES)
+def test_grounded_answer_ships_and_caps_tokens():
+    service, fake = make_service("Cadre helps with AI strategy.", "GROUNDED")
+    result = service.get_response(MESSAGES, SECTIONS)
     assert result == AIReply(reply="Cadre helps with AI strategy.", fallback_reason=None)
-    call = fake.calls[0]
-    assert call["model"] == "test-model"
-    assert call["messages"] == MESSAGES
-    assert call["max_tokens"] == MAX_OUTPUT_TOKENS == 500
+    answer_call, verdict_call = fake.calls
+    assert answer_call["model"] == "test-model"
+    assert answer_call["messages"] == MESSAGES
+    assert answer_call["max_tokens"] == MAX_OUTPUT_TOKENS == 500
+    assert verdict_call["max_tokens"] == VERDICT_MAX_TOKENS
 
 
-def test_get_response_detects_fallback_marker():
-    service, _ = make_service(content='Cannot say. <fallback reason="missing"/>')
-    result = service.get_response(MESSAGES)
+def test_grounding_call_sees_kb_and_answer():
+    service, fake = make_service("Cadre helps with AI strategy.", "GROUNDED")
+    service.get_response(MESSAGES, SECTIONS)
+    check_prompt = fake.calls[1]["messages"][1]["content"]
+    assert "45-day AI Transformation Intensive." in check_prompt
+    assert "Cadre helps with AI strategy." in check_prompt
+
+
+def test_fallback_reply_skips_the_grounding_check():
+    service, fake = make_service('Cannot say. <fallback reason="missing"/>')
+    result = service.get_response(MESSAGES, SECTIONS)
     assert result.fallback_reason == "missing"
     assert "<fallback" not in result.reply
+    assert len(fake.calls) == 1
 
 
-def test_rate_limit_maps_to_ai_rate_limit_error():
-    service, _ = make_service(error=sdk_error(429))
+def test_ungrounded_degrades_to_matching_kb_section_verbatim():
+    service, _ = make_service("Invented facts.", "UNGROUNDED")
+    messages = [{"role": "user", "content": "Tell me about your industries"}]
+    result = service.get_response(messages, SECTIONS)
+    assert result == AIReply(
+        reply="Healthcare, insurance, financial services.", fallback_reason=None
+    )
+
+
+def test_ungrounded_with_no_matching_section_falls_back():
+    service, _ = make_service("Invented facts.", "UNGROUNDED")
+    result = service.get_response(MESSAGES, SECTIONS)
+    assert result.reply == UNVERIFIED_REPLY
+    assert result.fallback_reason == "answer failed the grounding check"
+
+
+def test_unclear_verdict_degrades_too():
+    service, _ = make_service("Invented facts.", "no idea")
+    result = service.get_response(MESSAGES, SECTIONS)
+    assert result.fallback_reason == "answer failed the grounding check"
+
+
+def test_failed_grounding_check_degrades_instead_of_raising():
+    service, _ = make_service("Some answer.", sdk_error(500))
+    result = service.get_response(MESSAGES, SECTIONS)
+    assert result.reply == UNVERIFIED_REPLY
+    assert result.fallback_reason is not None
+
+
+def test_rate_limited_grounding_check_degrades_instead_of_raising():
+    service, _ = make_service("Some answer.", sdk_error(429))
+    result = service.get_response(MESSAGES, SECTIONS)
+    assert result.fallback_reason is not None
+
+
+def test_rate_limit_on_answer_maps_to_ai_rate_limit_error():
+    service, _ = make_service(sdk_error(429))
     with pytest.raises(AIRateLimitError):
-        service.get_response(MESSAGES)
+        service.get_response(MESSAGES, SECTIONS)
 
 
-def test_api_status_error_maps_to_ai_unavailable_error():
-    service, _ = make_service(error=sdk_error(500))
+def test_api_status_error_on_answer_maps_to_ai_unavailable_error():
+    service, _ = make_service(sdk_error(500))
     with pytest.raises(AIUnavailableError):
-        service.get_response(MESSAGES)
+        service.get_response(MESSAGES, SECTIONS)
 
 
 def test_empty_completion_raises_ai_unavailable_error():
-    service, _ = make_service(content="")
+    service, _ = make_service("")
     with pytest.raises(AIUnavailableError):
-        service.get_response(MESSAGES)
+        service.get_response(MESSAGES, SECTIONS)
 
 
 # --- mock circuit ---
@@ -131,13 +239,15 @@ def test_mock_mode_builds_no_network_client():
 
 def test_mock_mode_returns_canned_reply():
     service = AIService(make_settings(mock_llm=True))
-    result = service.get_response(MESSAGES)
+    result = service.get_response(MESSAGES, SECTIONS)
     assert result.fallback_reason is None
     assert result.reply
 
 
 def test_mock_mode_canned_fallback_on_keyword():
     service = AIService(make_settings(mock_llm=True))
-    result = service.get_response([{"role": "user", "content": "trigger a fallback"}])
+    result = service.get_response(
+        [{"role": "user", "content": "trigger a fallback"}], SECTIONS
+    )
     assert result.fallback_reason == "mock fallback"
     assert result == parse_fallback(MOCK_FALLBACK)

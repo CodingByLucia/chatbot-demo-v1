@@ -150,6 +150,73 @@
   background: var(--accent-deep);
 }
 
+/* Optional name/email capture inside the fallback card */
+.contact-form {
+  margin-top: 10px;
+}
+
+.contact-hint {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.contact-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.contact-fields input {
+  flex: 1;
+  min-width: 120px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.contact-fields input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.contact-fields button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.contact-fields button:hover:enabled {
+  background: var(--accent-deep);
+}
+
+.contact-fields button:disabled {
+  opacity: 0.5;
+}
+
+.contact-thanks {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.contact-error {
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  border-radius: 8px;
+  color: var(--error-text);
+  font-size: 13px;
+}
+
 /* Input row pinned to the bottom of the card */
 .input-row {
   display: flex;

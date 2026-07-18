@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Gate from './Gate.jsx'
+import FallbackCard from './FallbackCard.jsx'
 import {
   clearAccessCode,
   clearStoredChatId,
@@ -31,6 +32,13 @@ function App() {
     bottomRef.current?.scrollIntoView()
   }, [messages, loading])
 
+  // Drops the stored code and sends the user back to the gate.
+  function handleAccessDenied() {
+    clearAccessCode()
+    setGateError('Wrong or expired access code. Please enter it again.')
+    setHasCode(false)
+  }
+
   // Restores the conversation stored from a previous page load, so a
   // refresh doesn't wipe the chat.
   useEffect(() => {
@@ -48,9 +56,7 @@ function App() {
       .catch((err) => {
         if (cancelled) return
         if (err.code === 'ACCESS_DENIED') {
-          clearAccessCode()
-          setGateError('Wrong or expired access code. Please enter it again.')
-          setHasCode(false)
+          handleAccessDenied()
         } else if (err.code === 'UNKNOWN_CHAT') {
           clearStoredChatId()
           setChatId(null)
@@ -104,9 +110,7 @@ function App() {
       setInput(text)
 
       if (err.code === 'ACCESS_DENIED') {
-        clearAccessCode()
-        setGateError('Wrong or expired access code. Please enter it again.')
-        setHasCode(false)
+        handleAccessDenied()
       } else if (err.code === 'UNKNOWN_CHAT') {
         clearStoredChatId()
         setChatId(null)
@@ -170,16 +174,11 @@ function App() {
           <div key={index} className={`message ${message.role}`}>
             <div className={`bubble ${message.role}`}>{message.content}</div>
             {message.fallback && (
-              <div className="fallback-card">
-                <a
-                  className="booking-link"
-                  href={message.fallback.booking_url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Book a call
-                </a>
-              </div>
+              <FallbackCard
+                chatId={chatId}
+                bookingUrl={message.fallback.booking_url}
+                onAccessDenied={handleAccessDenied}
+              />
             )}
           </div>
         ))}

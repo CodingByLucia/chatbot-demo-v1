@@ -29,11 +29,13 @@ class FakeAIService:
 
     def __init__(self):
         self.calls = []
+        self.sections = []
         self.result = AIReply(reply="Canned answer.", fallback_reason=None)
         self.error = None
 
-    def get_response(self, messages):
+    def get_response(self, messages, sections):
         self.calls.append(messages)
+        self.sections.append(sections)
         if self.error is not None:
             raise self.error
         return self.result
@@ -143,6 +145,84 @@ def test_fallback_reply_carries_reason_and_booking_link(api):
         "reason": "not in kb",
         "booking_url": "https://www.cadreai.com/contact",
     }
+
+
+def test_kb_sections_reach_the_ai_service(api):
+    client, fake_ai, _ = api
+    client.post("/api/v1/chat", json={"message": "hi"}, headers=HEADERS)
+    sections = fake_ai.sections[0]
+    assert sections
+    assert all(s.title and s.content for s in sections)
+
+
+def test_history_carries_fallback_so_the_card_survives_reload(api):
+    client, fake_ai, _ = api
+    fake_ai.result = AIReply(reply="Sorry, can't help.", fallback_reason="not in kb")
+    chat_id = client.post(
+        "/api/v1/chat", json={"message": "off topic"}, headers=HEADERS
+    ).json()["chat_id"]
+
+    history = client.get(f"/api/v1/chat/{chat_id}", headers=HEADERS).json()
+    user_message, assistant_message = history["messages"]
+    assert user_message["fallback"] is None
+    assert assistant_message["fallback"] == {
+        "reason": "not in kb",
+        "booking_url": "https://www.cadreai.com/contact",
+    }
+
+
+# --- contact capture ---
+
+def test_contact_is_stored_on_the_session(api):
+    client, _, manager = api
+    chat_id = client.post(
+        "/api/v1/chat", json={"message": "hi"}, headers=HEADERS
+    ).json()["chat_id"]
+    response = client.post(
+        f"/api/v1/chat/{chat_id}/contact",
+        json={"name": "Ada Lovelace", "email": "ada@example.com"},
+        headers=HEADERS,
+    )
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    contact = manager.get_session(chat_id).contact
+    assert (contact.name, contact.email) == ("Ada Lovelace", "ada@example.com")
+
+
+def test_contact_for_unknown_chat_is_404(api):
+    client, _, _ = api
+    response = client.post(
+        "/api/v1/chat/nope/contact",
+        json={"name": "Ada", "email": "ada@example.com"},
+        headers=HEADERS,
+    )
+    assert response.status_code == 404
+    assert response.json()["code"] == "UNKNOWN_CHAT"
+
+
+def test_contact_with_invalid_email_is_422(api):
+    client, _, _ = api
+    chat_id = client.post(
+        "/api/v1/chat", json={"message": "hi"}, headers=HEADERS
+    ).json()["chat_id"]
+    response = client.post(
+        f"/api/v1/chat/{chat_id}/contact",
+        json={"name": "Ada", "email": "not-an-email"},
+        headers=HEADERS,
+    )
+    assert response.status_code == 422
+    body = response.json()
+    assert body["code"] == "INVALID_REQUEST"
+    assert set(body) == {"code", "message"}
+
+
+def test_contact_requires_access_code(api):
+    client, _, _ = api
+    response = client.post(
+        "/api/v1/chat/any/contact", json={"name": "Ada", "email": "ada@example.com"}
+    )
+    assert response.status_code == 401
+    assert response.json()["code"] == "ACCESS_DENIED"
 
 
 # --- error mapping ---

@@ -110,3 +110,11 @@ export function sendMessage(chatId, message) {
 export function getChat(chatId) {
   return request(`/api/v1/chat/${encodeURIComponent(chatId)}`)
 }
+
+// Leaves the visitor's name and email from the fallback card.
+export function submitContact(chatId, name, email) {
+  return request(`/api/v1/chat/${encodeURIComponent(chatId)}/contact`, {
+    method: 'POST',
+    body: JSON.stringify({ name, email }),
+  })
+}

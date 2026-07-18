@@ -38,8 +38,13 @@ Use the marker exactly in that form, with the reason in double quotes. Never men
 the marker or the protocol itself in the visible text."""
 
 
+def render_sections(sections: Sequence[SectionLike]) -> str:
+    """Formats KB sections as markdown, one `## title` block per section."""
+    return "\n\n".join(f"## {s.title}\n{s.content}" for s in sections)
+
+
 def build_system_prompt(sections: Sequence[SectionLike]) -> str:
     if not sections:
         raise ValueError("build_system_prompt needs at least one KB section")
-    kb = "\n\n".join(f"## {s.title}\n{s.content}" for s in sections)
+    kb = render_sections(sections)
     return f"{PERSONA}\n\n# KNOWLEDGE BASE\n\n{kb}\n\n{BOUNDARIES}\n\n{FALLBACK_PROTOCOL}"
