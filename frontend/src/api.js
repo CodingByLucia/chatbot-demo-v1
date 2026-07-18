@@ -90,6 +90,12 @@ async function request(path, options = {}) {
   return body
 }
 
+// Asks the server whether the stored access code is valid; resolves on 200
+// and throws ACCESS_DENIED on a wrong code.
+export function verifyAccessCode() {
+  return request('/api/v1/auth')
+}
+
 // Starts a new conversation with the first user message.
 export function startChat(message) {
   return request('/api/v1/chat', {

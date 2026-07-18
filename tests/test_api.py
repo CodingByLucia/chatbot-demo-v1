@@ -1,84 +1,8 @@
-import pytest
 from fastapi.testclient import TestClient
 
-from app.config import get_settings
-from app.core.ai_service import (
-    AIRateLimitError,
-    AIReply,
-    AIUnavailableError,
-    get_ai_service,
-)
-from app.main import create_app
-from app.sessions.manager import SessionManager, get_session_manager
-from app.sessions.store import InMemorySessionStore
-
-ACCESS_CODE = "letmein"
-HEADERS = {"X-Access-Code": ACCESS_CODE}
-
-ENV = {
-    "API_KEY": "test-key",
-    "BASE_URL": "http://localhost:9",
-    "LLM_MODEL": "test-model",
-    "ACCESS_CODE": ACCESS_CODE,
-    "MOCK_LLM": "false",
-}
-
-
-class FakeAIService:
-    """Stands in for AIService: returns a scripted reply or raises a scripted error."""
-
-    def __init__(self):
-        self.calls = []
-        self.sections = []
-        self.result = AIReply(reply="Canned answer.", fallback_reason=None)
-        self.error = None
-
-    def get_response(self, messages, sections):
-        self.calls.append(messages)
-        self.sections.append(sections)
-        if self.error is not None:
-            raise self.error
-        return self.result
-
-
-@pytest.fixture
-def api(monkeypatch):
-    for key, value in ENV.items():
-        monkeypatch.setenv(key, value)
-    get_settings.cache_clear()
-    app = create_app()
-    fake_ai = FakeAIService()
-    manager = SessionManager(InMemorySessionStore(ttl_seconds=3600))
-    app.dependency_overrides[get_ai_service] = lambda: fake_ai
-    app.dependency_overrides[get_session_manager] = lambda: manager
-    yield TestClient(app), fake_ai, manager
-    get_settings.cache_clear()
-
-
-# --- access code gate ---
-
-def test_health_needs_no_access_code(api):
-    client, _, _ = api
-    assert client.get("/health").status_code == 200
-
-
-def test_missing_access_code_is_401_with_error_shape(api):
-    client, _, _ = api
-    response = client.post("/api/v1/chat", json={"message": "hi"})
-    assert response.status_code == 401
-    body = response.json()
-    assert body["code"] == "ACCESS_DENIED"
-    assert set(body) == {"code", "message"}
-
-
-def test_wrong_access_code_is_401(api):
-    client, _, _ = api
-    response = client.post(
-        "/api/v1/chat", json={"message": "hi"}, headers={"X-Access-Code": "nope"}
-    )
-    assert response.status_code == 401
-    assert response.json()["code"] == "ACCESS_DENIED"
-
+from app.core.ai_service import AIRateLimitError, AIReply, AIUnavailableError
+from app.data.repository import get_booking_link
+from tests.conftest import HEADERS
 
 # --- chat flow ---
 
@@ -143,8 +67,29 @@ def test_fallback_reply_carries_reason_and_booking_link(api):
     ).json()
     assert body["fallback"] == {
         "reason": "not in kb",
-        "booking_url": "https://www.cadreai.com/contact",
+        "booking_url": get_booking_link(),
     }
+
+
+def test_contact_recommendation_attaches_booking_card(api):
+    client, fake_ai, _ = api
+    fake_ai.result = AIReply(
+        reply="Email team@example.com or call the team.",
+        fallback_reason=None,
+        contact_recommended=True,
+    )
+    chat_id_body = client.post(
+        "/api/v1/chat", json={"message": "how do I reach you?"}, headers=HEADERS
+    ).json()
+    assert chat_id_body["fallback"] == {
+        "reason": "answer recommends contacting the team",
+        "booking_url": get_booking_link(),
+    }
+
+    history = client.get(
+        f"/api/v1/chat/{chat_id_body['chat_id']}", headers=HEADERS
+    ).json()
+    assert history["messages"][-1]["fallback"] is not None
 
 
 def test_kb_sections_reach_the_ai_service(api):
@@ -167,7 +112,7 @@ def test_history_carries_fallback_so_the_card_survives_reload(api):
     assert user_message["fallback"] is None
     assert assistant_message["fallback"] == {
         "reason": "not in kb",
-        "booking_url": "https://www.cadreai.com/contact",
+        "booking_url": get_booking_link(),
     }
 
 

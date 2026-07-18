@@ -2,7 +2,8 @@
 grounding check that verifies every answer before it ships."""
 
 import re
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, replace
 from functools import lru_cache
 from typing import Sequence
 
@@ -21,6 +22,17 @@ _FALLBACK_MARKER = re.compile(
 )
 
 _WORD = re.compile(r"[a-z0-9]+")
+
+# Signals that a reply points the visitor at a contact channel: an email
+# address, a phone number, a contact-page URL, or booking wording.
+_CONTACT_HINT = re.compile(
+    r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+"
+    r"|\(\d{3}\)\s*\d{3}[-.\s]?\d{4}"
+    r"|\b\d{3}[-.]\d{3}[-.]\d{4}\b"
+    r"|/contact\b"
+    r"|\bbook(?:ing)? a call\b",
+    re.IGNORECASE,
+)
 
 # Words too generic to identify a section: nearly every title mentions Cadre or AI,
 # and question words appear in any visitor message.
@@ -60,6 +72,7 @@ class AIRateLimitError(Exception):
 class AIReply:
     reply: str
     fallback_reason: str | None  # None means a normal answer
+    contact_recommended: bool = False  # the reply itself points at a contact channel
 
 
 def parse_fallback(text: str) -> AIReply:
@@ -70,6 +83,12 @@ def parse_fallback(text: str) -> AIReply:
     reply = _FALLBACK_MARKER.sub("", text).strip()
     reason = match.group("reason").strip() or "unspecified"
     return AIReply(reply=reply, fallback_reason=reason)
+
+
+def recommends_contact(text: str) -> bool:
+    """True when the text recommends a contact channel — an email address, a
+    phone number, a contact page, or booking a call."""
+    return _CONTACT_HINT.search(text) is not None
 
 
 def parse_grounding_verdict(text: str) -> bool:
@@ -112,7 +131,10 @@ class AIService:
         grounded in, and the degrade source when it is not."""
         if self._client is None:
             return self._mock_response(messages)
-        content = self._complete(messages, MAX_OUTPUT_TOKENS)
+        start = time.perf_counter()
+        completion = self._complete(messages, MAX_OUTPUT_TOKENS)
+        duration_ms = round((time.perf_counter() - start) * 1000)
+        content = completion.choices[0].message.content or ""
         if not content.strip():
             self._logger.error("llm_empty_reply")
             raise AIUnavailableError("LLM returned an empty reply")
@@ -122,16 +144,22 @@ class AIService:
             result.reply, sections
         ):
             return self._degrade(messages, sections)
+        usage = completion.usage
         self._logger.info(
             "llm_reply",
             chars=len(result.reply),
             fallback=result.fallback_reason is not None,
+            duration_ms=duration_ms,
+            prompt_tokens=usage.prompt_tokens if usage else None,
+            completion_tokens=usage.completion_tokens if usage else None,
         )
+        if result.fallback_reason is None and recommends_contact(result.reply):
+            result = replace(result, contact_recommended=True)
         return result
 
-    def _complete(self, messages: list[dict[str, str]], max_tokens: int) -> str:
+    def _complete(self, messages: list[dict[str, str]], max_tokens: int):
         try:
-            completion = self._client.chat.completions.create(
+            return self._client.chat.completions.create(
                 model=self._settings.llm_model,
                 messages=messages,
                 max_tokens=max_tokens,
@@ -142,7 +170,6 @@ class AIService:
         except APIError as exc:
             self._logger.error("llm_unavailable", error=str(exc))
             raise AIUnavailableError("LLM call failed") from exc
-        return completion.choices[0].message.content or ""
 
     def _is_grounded(self, reply: str, sections: Sequence[SectionLike]) -> bool:
         """Second LLM call judging the reply against the KB. A failed or
@@ -157,12 +184,15 @@ class AIService:
             },
         ]
         try:
-            verdict = self._complete(check, VERDICT_MAX_TOKENS)
+            completion = self._complete(check, VERDICT_MAX_TOKENS)
         except (AIRateLimitError, AIUnavailableError) as exc:
             self._logger.error("grounding_check_failed", error=str(exc))
             return False
+        verdict = completion.choices[0].message.content or ""
         grounded = parse_grounding_verdict(verdict)
-        if not grounded:
+        if grounded:
+            self._logger.info("grounding_check", grounded=True)
+        else:
             self._logger.warning("ungrounded_reply", verdict=verdict.strip())
         return grounded
 
@@ -177,7 +207,11 @@ class AIService:
         section = match_section(query, sections)
         if section is not None:
             self._logger.warning("ungrounded_degraded_to_kb", section=section.title)
-            return AIReply(reply=section.content, fallback_reason=None)
+            return AIReply(
+                reply=section.content,
+                fallback_reason=None,
+                contact_recommended=recommends_contact(section.content),
+            )
         self._logger.warning("ungrounded_degraded_to_fallback")
         return AIReply(
             reply=UNVERIFIED_REPLY,
@@ -189,7 +223,10 @@ class AIService:
             (m["content"] for m in reversed(messages) if m["role"] == "user"), ""
         )
         canned = MOCK_FALLBACK if "fallback" in last_user.lower() else MOCK_REPLY
-        return parse_fallback(canned)
+        result = parse_fallback(canned)
+        if result.fallback_reason is None and recommends_contact(result.reply):
+            result = replace(result, contact_recommended=True)
+        return result
 
 
 @lru_cache

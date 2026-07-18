@@ -20,7 +20,7 @@ class StubSection:  # any object with title+content fits, no app/data needed
 
 SECTIONS = [
     StubSection("AI Strategy", "45-day AI Transformation Intensive."),
-    StubSection("Booking & Contact", "Book a call: https://www.cadreai.com/contact"),
+    StubSection("Booking & Contact", "Book a call: https://example.com/contact"),
 ]
 
 

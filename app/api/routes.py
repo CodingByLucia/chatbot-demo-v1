@@ -1,10 +1,12 @@
 """HTTP routes: validate input, walk the chat flow, map errors to status codes."""
 
 import secrets
+import time
 from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Depends, Header
+from structlog.contextvars import bind_contextvars, unbind_contextvars
 
 from app.api.errors import ApiError
 from app.api.schemas import (
@@ -45,10 +47,20 @@ def require_access_code(
     if x_access_code is None or not secrets.compare_digest(
         x_access_code.encode(), settings.access_code.encode()
     ):
+        structlog.get_logger().warning(
+            "access_denied", header_present=x_access_code is not None
+        )
         raise ApiError(401, "ACCESS_DENIED", "Missing or invalid access code.")
 
 
 api_router = APIRouter(prefix="/api/v1", dependencies=[Depends(require_access_code)])
+
+
+@api_router.get("/auth")
+def check_access() -> dict[str, str]:
+    """Returns 200 when the X-Access-Code header is valid; the router
+    dependency rejects the request with 401 before this body runs."""
+    return {"status": "ok"}
 
 AIServiceDep = Annotated[AIService, Depends(get_ai_service)]
 KnowledgeDep = Annotated[KnowledgeSource, Depends(get_knowledge_source)]
@@ -69,44 +81,57 @@ def _run_chat_turn(
     knowledge: KnowledgeSource,
     sessions: SessionManager,
 ) -> ChatResponse:
-    sections = knowledge.retrieve(message)
-    system_prompt = build_system_prompt(sections)
-    history = [
-        {"role": m.role, "content": m.content}
-        for m in session.messages[-(HISTORY_LIMIT - 1):]
-    ]
-    history.append({"role": "user", "content": message})
+    start = time.perf_counter()
+    # Every log line in this turn (incl. the AI service's) carries the chat_id.
+    bind_contextvars(chat_id=session.id)
     try:
-        result = ai.get_response(
-            [{"role": "system", "content": system_prompt}, *history], sections
-        )
-    except AIRateLimitError as exc:
-        raise ApiError(
-            429, "RATE_LIMITED", "The assistant is busy right now; try again shortly."
-        ) from exc
-    except AIUnavailableError as exc:
-        raise ApiError(
-            502, "AI_UNAVAILABLE", "The assistant is unavailable right now; try again shortly."
-        ) from exc
+        sections = knowledge.retrieve(message)
+        system_prompt = build_system_prompt(sections)
+        history = [
+            {"role": m.role, "content": m.content}
+            for m in session.messages[-(HISTORY_LIMIT - 1):]
+        ]
+        history.append({"role": "user", "content": message})
+        try:
+            result = ai.get_response(
+                [{"role": "system", "content": system_prompt}, *history], sections
+            )
+        except AIRateLimitError as exc:
+            raise ApiError(
+                429, "RATE_LIMITED", "The assistant is busy right now; try again shortly."
+            ) from exc
+        except AIUnavailableError as exc:
+            raise ApiError(
+                502, "AI_UNAVAILABLE", "The assistant is unavailable right now; try again shortly."
+            ) from exc
 
-    # Saved only after the model answered: a failed call must leave the
-    # session exactly as it was, or a retry would duplicate the user turn.
-    sessions.add_message(session, "user", message)
-    sessions.add_message(
-        session, "assistant", result.reply, fallback_reason=result.fallback_reason
-    )
-    structlog.get_logger().info(
-        "chat_turn",
-        chat_id=session.id,
-        messages=len(session.messages),
-        fallback=result.fallback_reason is not None,
-    )
-    fallback = (
-        None
-        if result.fallback_reason is None
-        else Fallback(reason=result.fallback_reason, booking_url=get_booking_link())
-    )
-    return ChatResponse(chat_id=session.id, reply=result.reply, fallback=fallback)
+        # The card shows when the bot couldn't answer, and also when the answer
+        # itself points at a contact channel (email, phone, contact page).
+        card_reason = result.fallback_reason
+        if card_reason is None and result.contact_recommended:
+            card_reason = "answer recommends contacting the team"
+
+        # Saved only after the model answered: a failed call must leave the
+        # session exactly as it was, or a retry would duplicate the user turn.
+        sessions.add_message(session, "user", message)
+        sessions.add_message(
+            session, "assistant", result.reply, fallback_reason=card_reason
+        )
+        structlog.get_logger().info(
+            "chat_turn",
+            messages=len(session.messages),
+            fallback=result.fallback_reason is not None,
+            contact_card=result.contact_recommended,
+            duration_ms=round((time.perf_counter() - start) * 1000),
+        )
+        fallback = (
+            None
+            if card_reason is None
+            else Fallback(reason=card_reason, booking_url=get_booking_link())
+        )
+        return ChatResponse(chat_id=session.id, reply=result.reply, fallback=fallback)
+    finally:
+        unbind_contextvars("chat_id")
 
 
 @api_router.post("/chat")

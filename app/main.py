@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.errors import register_error_handlers
 from app.api.routes import api_router, router
 from app.config import Settings, get_settings
-from app.data.repository import get_knowledge_source
+from app.data.repository import get_booking_link, get_knowledge_source
 
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
@@ -37,6 +37,7 @@ def create_app() -> FastAPI:
     _configure_logging(settings)
     logger = structlog.get_logger()
     get_knowledge_source()  # missing KB file or empty section raises here too
+    get_booking_link()  # a KB without contact data raises here, not mid-request
 
     app = FastAPI(title="Cadre Support Bot")
     register_error_handlers(app)

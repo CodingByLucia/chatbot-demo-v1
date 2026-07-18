@@ -1,5 +1,6 @@
 """Read access to the knowledge base: section retrieval and the booking link."""
 
+import re
 from abc import ABC, abstractmethod
 from functools import lru_cache
 
@@ -7,7 +8,7 @@ import structlog
 
 from app.data.knowledge import KnowledgeSection, load_knowledge
 
-BOOKING_LINK = "https://www.cadreai.com/contact"
+_URL = re.compile(r"https?://[^\s\"')]+")
 
 
 class KnowledgeSource(ABC):
@@ -25,8 +26,17 @@ class StaticKnowledgeSource(KnowledgeSource):
         return list(self._sections)
 
 
+@lru_cache
 def get_booking_link() -> str:
-    return BOOKING_LINK
+    """The contact-page URL: the first URL in the knowledge-base section whose
+    title mentions contact. Raises when no such section or URL exists, so a KB
+    edit that drops the contact data is caught at startup."""
+    for section in get_knowledge_source().retrieve("contact"):
+        if "contact" in section.title.lower():
+            match = _URL.search(section.content)
+            if match:
+                return match.group()
+    raise ValueError("knowledge base has no contact section with a URL")
 
 
 @lru_cache

@@ -1,4 +1,4 @@
-from app.data.knowledge import KnowledgeSection
+from app.data.knowledge import KnowledgeSection, load_knowledge
 from app.data.repository import (
     StaticKnowledgeSource,
     get_booking_link,
@@ -17,8 +17,11 @@ def test_static_source_returns_everything_and_ignores_query():
     assert source.retrieve("") == source.retrieve("anything else")
 
 
-def test_booking_link_is_the_contact_page():
-    assert get_booking_link() == "https://www.cadreai.com/contact"
+def test_booking_link_comes_from_the_kb_contact_section():
+    link = get_booking_link()
+    contact = next(s for s in load_knowledge() if "contact" in s.title.lower())
+    assert link.startswith("http")
+    assert link in contact.content
 
 
 def test_get_knowledge_source_is_a_singleton_over_the_real_kb():

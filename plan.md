@@ -66,18 +66,26 @@ Out, on purpose:
 
 ### Phase 4 — verify (all layers)
 - [x] Full pytest suite green — 70 passed offline (.venv python)
-- [x] /verify-scenarios against the local running app with the real LLM (MOCK_LLM=false) — 2026-07-17: 6/6 PASS. Each answer graded by an independent subagent that saw only the KB + the response text; all claims traced to KB lines (incl. contact email/phone, eight-pillar Maturity Index wording, black-box data claim). Scenario 6 returned the fallback card with booking link and wrote no poem. No fixes needed
-- [ ] Push → Render auto-deploys; confirm env vars (MOCK_LLM never set in Render) — Paola's side
-- [ ] /verify-scenarios against the DEPLOYED URL — all 6 scenarios pass — blocked on the push above
+- [x] /verify-scenarios against the local running app with the real LLM (MOCK_LLM=false) — 2026-07-17: 6/6 PASS. Each answer graded by an independent subagent that saw only the KB + the response text; all claims traced to KB lines (incl. contact email/phone, eight-pillar Maturity Index wording, black-box data claim). Scenario 6 returned the fallback card with booking link and wrote no poem. No fixes needed. Re-run 2026-07-18 after the markdown/auth/observability/contact-card changes: 6/6 PASS again (fresh judges; scenario 5's full 12-platform LLM list verified verbatim against the KB's "LLM Selection & Data Security" section), booking card auto-attached on every contact-recommending answer, scenario 6 still falls back with no poem
+- [x] Push → Render auto-deploys; confirm env vars (MOCK_LLM never set in Render) — Paola's side
+- [x] /verify-scenarios against the DEPLOYED URL — all 6 scenarios pass — blocked on the push above
 - [x] Record anything found in Known issues below — nothing new found this run; the two open known issues below stand unchanged
 
 ## Known issues
 - ~~Fallback card doesn't survive a page refresh~~ — fixed in phase 3: Message.fallback_reason persisted on the session, MessageOut exposes fallback {reason, booking_url}, the UI rebuilds the card from history on reload
-- Contact-form "sent" state is UI-local: after a page reload a fallback card shows the name/email form again even if details were already submitted (resubmitting just overwrites session.contact). Harmless for the demo; fixing it would mean exposing session.contact in the history response
-- tests/test_api.py sits right at the ~300-line limit; the next route test should split it (e.g. tests/test_api_contact.py) per the file-size rule
+- Contact-form "sent" state is UI-local: after a page reload a fallback card shows the name/email form again even if details were already submitted (resubmitting just overwrites session.contact). Harmless for the demo, no analytics or other service connected.
+- ~~tests/test_api.py sits right at the ~300-line limit; the next route test should split it (e.g. tests/test_api_contact.py) per the file-size rule~~ — done with the GET /api/v1/auth work: shared fixture moved to tests/conftest.py, gate + auth tests live in tests/test_api_auth.py, test_api.py back under the limit
 
 ## With more time (v2)
-- RAG over the unbounded content (articles, case studies, podcast, events): crawl > chunk > embed, dropped in behind the layer 4 retrieve(query) seam — callers unchanged
-- Redis session store behind the SessionStore ABC — callers unchanged
-- Real auth (accounts, JWT) replacing the access-code gate
-- Dashboards / analytics / CRM handoff for the captured contacts
+Every item below plugs into a layer that already exists, that's the point of the layer interfaces: growing means adding a piece, never rewiring. So this first V1 works as a foundation
+
+1. RAG over the unbounded content (articles, case studies, podcast, events). Today the bot only knows the evergreen core. The growing content doesn't fit, so v2 adds a pipeline that crawls those pages on a schedule, splits them into chunks, and stores them in a vector db. Plugs into: layer 4's retrieve(query) already takes the user's question, a VectorKnowledgeSource implements the same method returning the most relevant chunks. prompt_builder, routes and UI never change.
+2. Redis session store. Today conversations live in one server's memory: fine for a single instance, lost on restart, impossible to share across servers. Redis makes sessions survive restarts and lets many instances serve the same users, required for horizontal scaling, bc any server must be able to answer any chat. Plugs into: a RedisSessionStore implements the same four methods of the SessionStore contract (create/get/save/delete). SessionManager and routes don't change.
+3. Real auth (accounts) replacing the access code gate. The gate is a basic lock, not identity. Accounts give each user an identity, which is what unlocks per user chat history, client-specific answers, and per-user limits. Plugs into: the gate is already a single dependency on the routes, swapping it for a token check swaps one function, and sessions gain an owner.
+4. Contact handoff (CRM / email / Slack). Today a captured lead lands on the session and in the logs, proven end to end, but nobody gets notified. v2 routes it where the team works: email, a Slack ping, or the CRM.
+5. Rate limiting. The basic gate keeps strangers out; rate limiting keeps anyone  from flooding the bot. Plugs into: one dependency in layer 2 counting per code/user,routes unchanged.
+6. Streaming replies. Answers appear word by word instead of after a pause. Skipped in v1 bc replies are capped 500 tokens, so the pause is short. Plugs into: the LLM call is isolated in ai_service, streaming changes that one function plus the bubble rendering.
+7. Golden QA eval in CI. The /verify-scenarios idea, automated: a bigger fixed question set runs on every push and fails the build if an answer loses grounding, prompt regressions get caught before deploy, not by a user. Plugs into: the skill and the judging pattern already exist; CI just runs them.
+8. Observability stack (Grafana + alerts). The logs are already structured events carrying verdicts, durations, token counts and chat_ids,so a dashboard is configuration, not refactoring: fallback and ungrounded rates per day, latency charts, an alert if grounding errors spike.
+
+

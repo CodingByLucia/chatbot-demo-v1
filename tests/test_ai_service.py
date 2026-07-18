@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import httpx
 import openai
 import pytest
+import structlog
 
 from app.config import Settings
 from app.core.ai_service import (
@@ -17,6 +18,7 @@ from app.core.ai_service import (
     match_section,
     parse_fallback,
     parse_grounding_verdict,
+    recommends_contact,
 )
 
 
@@ -45,7 +47,10 @@ class FakeCompletions:
         if isinstance(outcome, Exception):
             raise outcome
         message = SimpleNamespace(content=outcome)
-        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=message)],
+            usage=SimpleNamespace(prompt_tokens=7, completion_tokens=5),
+        )
 
 
 def make_service(*outcomes):
@@ -124,6 +129,30 @@ def test_verdict_grounded_with_extra_words_still_passes():
     assert parse_grounding_verdict("GROUNDED - every claim checks out") is True
 
 
+# --- contact recommendation detector ---
+
+def test_recommends_contact_on_email():
+    assert recommends_contact("Reach the team at team@example.com for access.")
+
+
+def test_recommends_contact_on_phone_number():
+    assert recommends_contact("Call (555) 123-4567 to get started.")
+    assert recommends_contact("Call 555-123-4567 to get started.")
+
+
+def test_recommends_contact_on_contact_page_url():
+    assert recommends_contact("Fill the form at https://example.com/contact today.")
+
+
+def test_recommends_contact_on_booking_wording():
+    assert recommends_contact("You can book a call with a strategist.")
+    assert recommends_contact("Booking a call is the fastest way.")
+
+
+def test_recommends_contact_false_on_plain_answer():
+    assert not recommends_contact("Cadre helps with AI strategy and engineering.")
+
+
 # --- KB section matcher ---
 
 def test_match_section_finds_title_keyword():
@@ -167,6 +196,13 @@ def test_grounding_call_sees_kb_and_answer():
     check_prompt = fake.calls[1]["messages"][1]["content"]
     assert "45-day AI Transformation Intensive." in check_prompt
     assert "Cadre helps with AI strategy." in check_prompt
+
+
+def test_grounded_reply_with_contact_details_is_flagged():
+    service, _ = make_service("Email team@example.com to get set up.", "GROUNDED")
+    result = service.get_response(MESSAGES, SECTIONS)
+    assert result.fallback_reason is None
+    assert result.contact_recommended is True
 
 
 def test_fallback_reply_skips_the_grounding_check():
@@ -228,6 +264,26 @@ def test_empty_completion_raises_ai_unavailable_error():
     service, _ = make_service("")
     with pytest.raises(AIUnavailableError):
         service.get_response(MESSAGES, SECTIONS)
+
+
+# --- observability ---
+
+def test_llm_reply_logs_duration_and_token_usage():
+    service, _ = make_service("An answer.", "GROUNDED")
+    with structlog.testing.capture_logs() as logs:
+        service.get_response(MESSAGES, SECTIONS)
+    event = next(e for e in logs if e["event"] == "llm_reply")
+    assert event["duration_ms"] >= 0
+    assert event["prompt_tokens"] == 7
+    assert event["completion_tokens"] == 5
+
+
+def test_passed_grounding_check_is_logged():
+    service, _ = make_service("An answer.", "GROUNDED")
+    with structlog.testing.capture_logs() as logs:
+        service.get_response(MESSAGES, SECTIONS)
+    event = next(e for e in logs if e["event"] == "grounding_check")
+    assert event["grounded"] is True
 
 
 # --- mock circuit ---

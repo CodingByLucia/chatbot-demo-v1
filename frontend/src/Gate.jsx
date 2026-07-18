@@ -1,25 +1,43 @@
 import { useState } from 'react'
-import { setAccessCode } from './api.js'
+import { clearAccessCode, setAccessCode, verifyAccessCode } from './api.js'
 
-// Access screen shown before the chat. Stores the submitted code and tells
-// the parent to switch to the chat; the code itself is only validated by the
-// first real API call.
+// Access screen shown before the chat. The submitted code is checked against
+// the server right away: a wrong code stays here with an error, a valid one
+// is stored and the parent switches to the chat.
 function Gate({ onEnter, error }) {
   const [code, setCode] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [localError, setLocalError] = useState('')
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
     const trimmed = code.trim()
-    if (!trimmed) return
+    if (!trimmed || checking) return
+    setChecking(true)
+    setLocalError('')
     setAccessCode(trimmed)
-    onEnter()
+    try {
+      await verifyAccessCode()
+      onEnter()
+    } catch (err) {
+      clearAccessCode()
+      setLocalError(
+        err.code === 'ACCESS_DENIED'
+          ? 'Wrong access code. Please try again.'
+          : err.message || 'Could not verify the code. Please try again.',
+      )
+    } finally {
+      setChecking(false)
+    }
   }
+
+  const shownError = localError || error
 
   return (
     <div className="gate">
       <h1>Cadre Support</h1>
       <p>Enter the access code to start chatting.</p>
-      {error && <p className="gate-error">{error}</p>}
+      {shownError && <p className="gate-error">{shownError}</p>}
       <form className="gate-form" onSubmit={handleSubmit}>
         <input
           type="password"
@@ -27,10 +45,11 @@ function Gate({ onEnter, error }) {
           onChange={(event) => setCode(event.target.value)}
           placeholder="Access code"
           aria-label="Access code"
+          disabled={checking}
           autoFocus
         />
-        <button type="submit" disabled={!code.trim()}>
-          Enter
+        <button type="submit" disabled={!code.trim() || checking}>
+          {checking ? 'Checking…' : 'Enter'}
         </button>
       </form>
     </div>

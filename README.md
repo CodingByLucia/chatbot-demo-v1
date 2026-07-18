@@ -7,7 +7,7 @@ A support chatbot for [Cadre](https://www.cadreai.com/), an AI strategy and impl
 ## How it works
 
 - The knowledge base ([docs/cadre-kb.md](docs/cadre-kb.md)) is curated from Cadre's public website at build time and injected into the system prompt. The bot never fetches the site at runtime.
-- When the model can't answer from the KB, it emits a `<fallback reason=""/>` marker; the API strips it and returns a fallback card with the booking link and an optional name/email form.
+- When the model can't answer from the KB, it emits a `<fallback reason=""/>` marker; the API strips it and returns a fallback card with the booking link and an optional name/email form. The same card is also attached whenever the answer itself recommends a contact channel (an email address, a phone number, the contact page, or booking a call).
 - Every non-fallback answer passes a grounding check: a second LLM call verifies the answer against the KB. If the answer is ungrounded (or the check fails), the bot ships the matching KB section verbatim instead — or the fallback card when no section matches.
 - All `/api/v1/*` routes require an `X-Access-Code` header; a one-screen gate in the UI collects it. This keeps strangers from draining LLM credits on the public deploy.
 
@@ -57,6 +57,7 @@ Every route under `/api/v1` requires the `X-Access-Code` header. Every error has
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/health` | Liveness check (no access code). Returns `{"status": "ok"}` |
+| `GET` | `/api/v1/auth` | Access-code check used by the gate screen. Returns `{"status": "ok"}` when the `X-Access-Code` header is valid, 401 otherwise |
 | `POST` | `/api/v1/chat` | Start a chat. Body `{"message"}` → `{"chat_id", "reply", "fallback"}` (`fallback` is `null` or `{"reason", "booking_url"}`) |
 | `POST` | `/api/v1/chat/{chat_id}/messages` | Continue a chat. Same body and response as above |
 | `GET` | `/api/v1/chat/{chat_id}` | Full history: `{"chat_id", "messages": [{"role", "content", "fallback"}]}` |
