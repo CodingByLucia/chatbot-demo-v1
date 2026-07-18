@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
 from app.config import Settings, get_settings
+from app.data.repository import get_knowledge_source
 
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
     settings = get_settings()  # missing/empty API_KEY raises here, before anything serves
     _configure_logging(settings)
     logger = structlog.get_logger()
+    get_knowledge_source()  # missing KB file or empty section raises here too
 
     app = FastAPI(title="Cadre Support Bot")
     app.include_router(router)

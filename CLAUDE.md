@@ -74,6 +74,8 @@ Cross layers only through these interfaces, anything else, stop and ask>
 - only repository.py imports knowledge.py. changing KB content and changing bot behavior are different jobs, separate commits
 - keep files under ~300 lines. if one is about to cross, propose a split first
 - no answer ships unchecked: every non-fallback reply passes the grounding check before the route returns it (mechanism + degraded path: layer 3). every catch is logged so we can measure how often the model tried to invent
+- comments and docstrings describe what the code does, never the plan/playbook (no "decision N", "layer N", "seam", "v1" references)
+- KB curation: every quoted string must match the live page verbatim and cite the page it actually appears on; after drafting, adversarially re-verify against the pages with a fresh subagent (extraction summaries truncate quotes and mis-attribute sources)
 
 ## Testing (how we verify, two kinds, don't mix them)
 1. pytest (tests/): plain-function tests that run offline on every change. never call the network, the LLM client gets replaced with a fake that

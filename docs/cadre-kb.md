@@ -12,7 +12,7 @@ Answer: OpenAI, Anthropic (Claude), Google, Microsoft, AWS,
 ## Cadre Overview
 Source: https://www.cadreai.com/
 Cadre AI is an AI Strategy & Implementation partner. Tagline: "From AI Confusion to AI Confidence." "We help you pinpoint the right AI opportunities, implement them seamlessly, and deliver real business impact."
-Positioning: "The companies that win with AI are not the ones with the most tools. They're the ones with a plan." "When it comes to AI, the real risk is waiting."
+Positioning: "The companies that win with AI are not the ones with the most tools. They're the ones with a plan." "Because when it comes to AI, the real risk is waiting."
 Approach: "Find. Prepare. Implement." — "Real AI transformation requires finding the right problems, preparing your people to lead change, and implementing solutions that drive measurable results."
 What working with Cadre delivers:
 - Drive Revenue: "Scale faster with AI-driven automation and predictive insights that unlock new growth opportunities."
@@ -23,8 +23,8 @@ From the site FAQ — "What does Cadre AI actually do?": "We're a consultancy fo
 ## About Cadre
 Source: https://www.cadreai.com/about
 Mission: "We turn enterprise AI into real profitability, scale, and enterprise value."
-Track record: 3x higher success rate with a strategic AI partner; 100+ high-ROI use cases delivered across 50+ companies; "AI projects with specialized vendors have 300% higher success rates than in-house projects" (MIT State of AI in Business 2025).
-Cadre AI is an official OpenAI Service Partner (source: https://www.cadreai.com/strategy).
+Track record: 3x higher success rate with a strategic AI partner; 100+ high-ROI use cases delivered across 50+ companies; "AI projects developed with specialized vendors have a success rate 300% higher than in-house AI projects" (MIT State of AI in Business 2025).
+Cadre AI is "one of the first official OpenAI service partners" (source: https://www.cadreai.com/strategy).
 The Cadre Way (values):
 - Growth Mindset: "We are lifelong learners on a mission to get 1% better every single day"
 - Extreme Ownership: "We own the problem, the solution, and the outcome, regardless of scenario"
@@ -33,8 +33,8 @@ The Cadre Way (values):
 Leadership team: Grayson Lafrenz (Founder/CEO), Keith Jensen (President), Riley Stricklin (Founder/Chief Strategy Officer), Nicole Kelley (CFO), Sarah McLoughlin (Chief Client Officer), Chad Lohrli (Founder/Chief AI Officer), Katie Boes (VP, Client Strategy and Partnerships), Ben Shapiro (Co-Founder/Head of AI Strategy).
 
 ## AI Strategy
-Source: https://www.cadreai.com/strategy
-"Most businesses know they need to implement AI, they just don't know how. We guide you from initial uncertainty to measurable business impact with AI."
+Source: https://www.cadreai.com/strategy (service description: https://www.cadreai.com/)
+From the homepage service card: "Most businesses know they need to implement AI, they just don't know how. We guide you from initial uncertainty to measurable business impact with AI."
 Core offering: "The AI Transformation Intensive: From Idea to Execution in 45 Days" — "Most AI strategies stall. We run a structured, 45-day AI Transformation Intensive that takes you from zero clarity to a prioritized roadmap your team can execute."
 Four-phase approach:
 1. Discover Use Cases — interview teams, calculate ROI, prioritize opportunities
@@ -42,7 +42,7 @@ Four-phase approach:
 3. Implement Solutions — deploy tools, train teams, monitor usage
 4. Scale with Confidence — expand implementations, establish champions, create roadmaps
 Differentiation: "We don't deliver massive slide decks and walk away. We find quick wins that create measurable EBITDA impact, build the roadmap, then implement that roadmap."
-Eight Pillars of AI Transformation: 1. Build dedicated AI team, 2. Deploy AI Command Center, 3. Create AI-First Culture Shift, 4. Connect & Enable Tech Stack, 5. AI-Healthy Data Assessment, 6. Build AI Agent Readiness Framework, 7. Departmental AI Deep Dives, 8. Find 3-Year AI Vision.
+Eight Pillars of AI Transformation: 1. Build your dedicated AI team, 2. Deploy AI Command Center, 3. Create an AI-First Culture Shift, 4. Connect & Enable Tech Stack, 5. AI-Healthy Data Assessment, 6. Build your Framework for AI Agent Readiness, 7. Departmental AI Deep Dives, 8. Find your 3-Year AI Vision.
 
 ## AI Leadership & Facilitation
 Source: https://www.cadreai.com/leadership-facilitation
@@ -54,13 +54,13 @@ Session formats: 2-Day Leadership Intensive, 1-Day Workshop, Half-Day Executive 
 Participants learn to: spot AI-ready use cases in your business, address fear & uncertainty productively, build alignment across leadership & teams, leave with actionable plans, not just inspiration.
 
 ## AI Engineering
-Source: https://www.cadreai.com/ai-engineering
-"Connect your systems, automate your workflows, and multiply your impact."
-"We solve business problems with the right combination of existing tools, smart automation, and custom AI agents to integrate AI where traditional workflows fail."
-Three-step approach: 1. Understand the Problem (what business impact, where teams waste time, what data is trapped in disconnected systems), 2. Pick the Right Approach (research existing tools, automate workflows and connect current systems, custom AI agents for complex multi-step processes), 3. Integrate & Automate (connect APIs across the tech stack, build workflows that scale, track emerging AI capabilities).
+Source: https://www.cadreai.com/ai-engineering (service description: https://www.cadreai.com/)
+"Connect your systems, automate your workflows, and multiply your impact." "We've built workflow automations and AI systems that actually work."
+From the homepage service card: "We solve business problems with the right combination of existing tools, smart automation, and custom AI agents to integrate AI where traditional workflows fail. We know what works, what's coming next, and how to drive real ROI."
+Three-step approach: 1. Understand the Problem (what business impact, where teams waste time, what data is trapped in disconnected systems), 2. Pick the Right Approach (research existing tools, automate workflows and connect current systems, custom AI agents for complex, repetitive multi-step processes), 3. Integrate & Automate (connect APIs across the tech stack, build workflows that scale, track emerging AI capabilities).
 Capabilities: automate repetitive work (data entry, document routing, email triage, report generation, customer inquiry handling); connect disconnected systems (sync data in real time, trigger actions across platforms, eliminate manual copy-paste); add AI intelligence (workflows that understand context, route based on content analysis, extract insights from unstructured data); deploy custom AI agents.
-Buy vs. build philosophy: "We've seen companies waste months building custom solutions when a $50/month tool & smart automation would have solved their problem within a week. ... Our implementations have taught us when to buy, when to automate, and when to build custom." From the site FAQ — "Sometimes we build, sometimes we don't. If a tool you already use has AI features available, we help you activate and use them quickly. When off-the-shelf tools exist, we'll recommend the best fit. We only build custom solutions when there's no faster or smarter option."
-Works with your existing systems — site FAQ: "Yes. We start with a deep review of your current tech stack and processes. Then we identify where AI can plug in, whether it's simple workflow automation or agents that connect multiple tools together for fully automated execution."
+Buy vs. build philosophy: "We've seen companies waste months building custom solutions when a $50/month tool & smart automation would have solved their problem within a week. ... Our implementations have taught us when to buy, when to automate, and when to build custom." From the homepage FAQ (https://www.cadreai.com/), "What kind of tools does Cadre AI build?": "Sometimes we build, sometimes we don't. If a tool you already use has AI features available, we help you activate and use them quickly. When off-the-shelf tools exist, we'll recommend the best fit. We only build custom solutions when there's no faster or smarter option."
+Works with your existing systems — homepage FAQ (https://www.cadreai.com/), "Can you work with our current tools and systems?": "Yes. We start with a deep review of your current tech stack and processes. Then we identify where AI can plug in, whether it's simple workflow automation or agents that connect multiple tools together for fully automated execution."
 
 ## LLM Selection & Data Security
 Source: https://www.cadreai.com/ai-engineering
@@ -69,26 +69,26 @@ How Cadre handles LLM choice and data security:
 - "Black-box your data so it's never used to train other models"
 - "Stop employees from sharing company secrets on personal LLMs"
 - "Get your entire team on secure, compliant AI tools"
-Cadre is provider-agnostic; LLM platforms featured on the site include: OpenAI, Claude (Anthropic), Google Gemini, Copilot, Meta AI, Mistral AI, Grok, DeepSeek, Qwen, Kimi, OpenRouter, Perplexity.
+LLM platforms featured on the site: OpenAI, Claude (Anthropic), Google Gemini, Microsoft Copilot, Meta AI, Mistral AI, Grok, DeepSeek, Qwen, Kimi, OpenRouter, Perplexity.
 
 ## AI Agents
 Source: https://www.cadreai.com/agents
 "Custom AI Agents for every team & workflow" — everything from simple prompts and assistants to full fledged AI agents. "Each one is built to drive revenue, improve profitability, and elevate employees."
 Three tiers:
-1. Prompts & Assistants — "Start simple and move quickly"; high-impact designs that plug into daily work and automate repeatable tasks
+1. Prompts & Assistants — "Start simple and move quickly"; high impact prompts and assistants that plug into daily work and automate repeatable tasks
 2. Voice Agents — "Bring AI into conversations"; handle intake, qualification, support, and internal routing, turning calls into clean data
-3. Fully Fledged AI Agents — for more complex workflows; agents that "can plan, take actions across tools, and run end to end processes"
+3. Fully Fledged AI Agents — for more complex workflows; agents that "can plan, take actions across tools, and run end to end processes with guardrails and human oversight"
 Example agents by department: Finance (Expense Report Auto-approver), Operations (Google Workspace Automator, Recruiting Coordinator, Delegation Advisor, Production Schedule Optimizer, Process Documentation Automator), Technology (Incident Response Coordinator), Sales (Quote Approval Router, Comp Analysis Automator, Prospecting Automator, Cross-Sell Identifier), Legal (Contract Clause Library).
 
 ## Client Portal & Results Tracking
 Source: https://www.cadreai.com/agents and https://www.cadreai.com/contact
 "Cadre gives you a centralized portal to track tools, agents, training, and results. Stay aligned, stay accountable, and scale what works."
-The portal covers tools, agents, training, and results in one place. The site's call to action for it is "Get Your AI Results" / "Track your AI results". Portal access is set up with Cadre directly — for access to your portal, contact Cadre: https://www.cadreai.com/contact
+The portal covers tools, agents, training, and results in one place. The site's call to action for it is "Get Your AI Results" / "Track your AI results". The website does not publish a portal login URL or access instructions; for portal access, contact Cadre: https://www.cadreai.com/contact (email hello@gocadre.ai).
 
 ## AI Maturity Index
 Source: https://www.cadreai.com/
 "How will the AI Maturity Index help me?": "It scores your company across our eight-pillar framework for AI transformation. You'll get a grade in each area with clear explanations, plus actionable insights on how to improve and move further along in your AI journey."
-To get scored, use the "Get Your AI Maturity Index" call to action on https://www.cadreai.com/ or book a call: https://www.cadreai.com/contact
+The homepage's call to action for it is "Get Your AI Maturity Index" (https://www.cadreai.com/). The website does not describe the scoring process beyond that call to action; for details on getting scored, contact Cadre: https://www.cadreai.com/contact
 
 ## Industries
 Source: https://www.cadreai.com/industries
@@ -106,14 +106,14 @@ Source: https://www.cadreai.com/industries
 ## Departments
 Source: https://www.cadreai.com/departments
 "AI that works across your entire business. From Operations to Marketing, we've built solutions that actually get used and deliver measurable results."
-- Sales (https://www.cadreai.com/departments/sales): "Close more deals faster with AI that automates prospecting, qualifies leads instantly, and keeps your pipeline moving"
-- Marketing (https://www.cadreai.com/departments/marketing): "Create more, test faster, and prove ROI with AI that generates campaigns, optimizes performance, and scales content"
-- Customer Success (https://www.cadreai.com/departments/customer-success): "Prevent churn and drive expansion with AI that predicts at-risk accounts, automates health monitoring, and scales personalized"
-- Executive Leadership (https://www.cadreai.com/departments/executive-leadership): "Make faster, better decisions with AI that synthesizes intelligence from across the business and delivers insights"
-- Finance (https://www.cadreai.com/departments/finance): "Close books faster and make better decisions with AI that automates reconciliation, forecasts accurately, and delivers real-time"
-- Operations (https://www.cadreai.com/departments/operations): "Run leaner and move faster with AI that automates workflows, eliminates bottlenecks, and keeps your operations running"
+- Sales (https://www.cadreai.com/departments/sales): "Close more deals faster with AI that automates prospecting, qualifies leads instantly, and keeps your pipeline moving without manual busywork."
+- Marketing (https://www.cadreai.com/departments/marketing): "Create more, test faster, and prove ROI with AI that generates campaigns, optimizes performance, and scales content without scaling headcount."
+- Customer Success (https://www.cadreai.com/departments/customer-success): "Prevent churn and drive expansion with AI that predicts at-risk accounts, automates health monitoring, and scales personalized engagement."
+- Executive Leadership (https://www.cadreai.com/departments/executive-leadership): "Make faster, better decisions with AI that synthesizes intelligence from across the business and delivers insights without waiting for reports."
+- Finance (https://www.cadreai.com/departments/finance): "Close books faster and make better decisions with AI that automates reconciliation, forecasts accurately, and delivers real-time financial intelligence."
+- Operations (https://www.cadreai.com/departments/operations): "Run leaner and move faster with AI that automates workflows, eliminates bottlenecks, and keeps your operations running without constant manual intervention."
 - Technology (https://www.cadreai.com/departments/technology): "Ship faster and maintain quality with AI that automates code review, accelerates incident response, and eliminates technical debt"
-- Legal (https://www.cadreai.com/departments/legal): "Accelerate contract review and stay compliant with AI that automates legal research, flags risks instantly, and scales expertise"
+- Legal (https://www.cadreai.com/departments/legal): "Accelerate contract review and stay compliant with AI that automates legal research, flags risks instantly, and scales expertise across the business."
 
 ## Best Fit & Why a Partner
 Source: https://www.cadreai.com/
@@ -122,8 +122,8 @@ Source: https://www.cadreai.com/
 
 ## Booking & Contact
 Source: https://www.cadreai.com/contact
-Book a call with an AI strategist: https://www.cadreai.com/contact ("Talk to an AI Strategist")
-Office: 3580 Carmel Mountain Rd, #150, San Diego CA, 92130
+To reach an AI strategist, use the contact page: https://www.cadreai.com/contact — the site's call to action is "Talk to an AI Strategist". "As your partner in AI Strategy & Implementation, we're here for you."
+The page has a contact form (Full Name, Email, Subject, Message — all required); the site has no online scheduling widget, so the form, email, or phone are the ways to get in touch.
+Office: 3580 Carmel Mountain Rd, #150 San Diego CA, 92130
 Email: hello@gocadre.ai
 Phone: (619) 324-3223
-The contact page has a form (Full Name, Email, Subject, Message).
