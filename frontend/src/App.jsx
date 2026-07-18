@@ -28,11 +28,22 @@ function App() {
   const [banner, setBanner] = useState('')
   const [chatId, setChatId] = useState(() => getStoredChatId())
   const bottomRef = useRef(null)
+  const inputRef = useRef(null)
 
   // Keeps the newest message (or the loading bubble) in view.
   useEffect(() => {
     bottomRef.current?.scrollIntoView()
   }, [messages, loading])
+
+  // Returns focus to the message input whenever it re-enables (reply arrived,
+  // error restored the text) — except when the newest message opened a
+  // fallback card, whose form should keep the user's attention.
+  useEffect(() => {
+    if (loading || restoring) return
+    const last = messages[messages.length - 1]
+    if (last?.role === 'assistant' && last.fallback) return
+    inputRef.current?.focus()
+  }, [messages, loading, restoring])
 
   // Drops the stored code and sends the user back to the gate.
   function handleAccessDenied() {
@@ -212,6 +223,7 @@ function App() {
 
       <form className="input-row" onSubmit={handleSend}>
         <input
+          ref={inputRef}
           type="text"
           value={input}
           onChange={(event) => setInput(event.target.value)}
