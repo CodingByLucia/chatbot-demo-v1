@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Header
 from structlog.contextvars import bind_contextvars, unbind_contextvars
 
 from app.api.errors import ApiError
+from app.api.rate_limit import enforce_message_rate_limit
 from app.api.schemas import (
     ChatHistoryResponse,
     ChatRequest,
@@ -134,7 +135,7 @@ def _run_chat_turn(
         unbind_contextvars("chat_id")
 
 
-@api_router.post("/chat")
+@api_router.post("/chat", dependencies=[Depends(enforce_message_rate_limit)])
 def start_chat(
     request: ChatRequest,
     ai: AIServiceDep,
@@ -145,7 +146,9 @@ def start_chat(
     return _run_chat_turn(session, request.message, ai, knowledge, sessions)
 
 
-@api_router.post("/chat/{chat_id}/messages")
+@api_router.post(
+    "/chat/{chat_id}/messages", dependencies=[Depends(enforce_message_rate_limit)]
+)
 def continue_chat(
     chat_id: str,
     request: ChatRequest,

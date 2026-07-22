@@ -58,14 +58,16 @@ Every route under `/api/v1` requires the `X-Access-Code` header. Every error has
 |---|---|---|
 | `GET` | `/health` | Liveness check (no access code). Returns `{"status": "ok"}` |
 | `GET` | `/api/v1/auth` | Access-code check used by the gate screen. Returns `{"status": "ok"}` when the `X-Access-Code` header is valid, 401 otherwise |
-| `POST` | `/api/v1/chat` | Start a chat. Body `{"message"}` → `{"chat_id", "reply", "fallback"}` (`fallback` is `null` or `{"reason", "booking_url"}`) |
-| `POST` | `/api/v1/chat/{chat_id}/messages` | Continue a chat. Same body and response as above |
+| `POST` | `/api/v1/chat` | Start a chat. Body `{"message"}` → `{"chat_id", "reply", "fallback"}` (`fallback` is `null` or `{"reason", "booking_url"}`). Rate limited |
+| `POST` | `/api/v1/chat/{chat_id}/messages` | Continue a chat. Same body and response as above. Rate limited |
 | `GET` | `/api/v1/chat/{chat_id}` | Full history: `{"chat_id", "messages": [{"role", "content", "fallback"}]}` |
 | `POST` | `/api/v1/chat/{chat_id}/contact` | Store the visitor's `{"name", "email"}` from the fallback card → `{"status": "ok"}` |
 
-Error codes: `ACCESS_DENIED` (401), `UNKNOWN_CHAT` (404, unknown/expired chat), `INVALID_REQUEST` (422), `RATE_LIMITED` (429), `AI_UNAVAILABLE` (502), `NOT_FOUND` (404, unmatched path), `INTERNAL_ERROR` (500).
+Error codes: `ACCESS_DENIED` (401), `UNKNOWN_CHAT` (404, unknown/expired chat), `INVALID_REQUEST` (422), `TOO_MANY_MESSAGES` (429, the caller's own rate limit), `RATE_LIMITED` (429, the upstream model is busy), `AI_UNAVAILABLE` (502), `NOT_FOUND` (404, unmatched path), `INTERNAL_ERROR` (500).
 
 Only the last 10 messages of a session are sent to the model; the session store keeps the full history until the TTL expires.
+
+The two message-sending endpoints are rate limited to 10 messages per minute per access code + client address, counted in memory. Over the limit returns 429 `TOO_MANY_MESSAGES`; reads, the auth check and the contact post are not limited. The counters live in one process, so they reset on restart and each instance counts on its own.
 
 ## Testing
 

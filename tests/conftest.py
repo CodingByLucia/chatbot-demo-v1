@@ -3,6 +3,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.rate_limit import RateLimiter, get_rate_limiter
 from app.config import get_settings
 from app.core.ai_service import AIReply, get_ai_service
 from app.main import create_app
@@ -48,5 +49,10 @@ def api(monkeypatch):
     manager = SessionManager(InMemorySessionStore(ttl_seconds=3600))
     app.dependency_overrides[get_ai_service] = lambda: fake_ai
     app.dependency_overrides[get_session_manager] = lambda: manager
+    # One limiter for the whole test, but a new one per test: the real one is a
+    # process-wide singleton, so without this one test's messages would count
+    # against the next one's.
+    limiter = RateLimiter()
+    app.dependency_overrides[get_rate_limiter] = lambda: limiter
     yield TestClient(app), fake_ai, manager
     get_settings.cache_clear()

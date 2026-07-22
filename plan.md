@@ -13,11 +13,12 @@ In:
 3. Fallback with booking link + optional name/email capture
 4. Minimal React chat UI served by FastAPI, so it's one deploy
 5. One-screen access-code gate: the deployed bot spends real credits per message, the gate keeps strangers from draining them
+6. In-memory rate limit: max 10 messages per minute, then a "try again later" error — the gate stops strangers, this stops one holder of the code from draining the credits
 
 Out, on purpose:
 1. RAG / vector db — nothing to retrieve at this size, it only adds latency and failure modes; the seam is ready (layer 4), adding it later = one new class
 2. Redis — single-instance demo, interface ready in layer 5
-3. Real auth (accounts, JWT) — overkill for a demo bot; rate limiting would be the first prod step
+3. Real auth (accounts, JWT) — overkill for a demo bot
 4. Dashboards / analytics / CRM — with more time
 5. Runtime site crawling — the KB holds only the stable evergreen core; when the fast-changing content needs to come in, the crawl becomes the ingestion step of the RAG impl (crawl > chunk > embed > the layer 4 seam) in v2
 6. Streaming responses — replies are short (~500 token cap), not worth the extra moving parts in v1
@@ -71,6 +72,15 @@ Out, on purpose:
 - [x] /verify-scenarios against the DEPLOYED URL — all 6 scenarios pass — blocked on the push above
 - [x] Record anything found in Known issues below — nothing new found this run; the two open known issues below stand unchanged
 
+### Phase 5 — in-memory rate limit (layer 2)
+Scope: the gate stops strangers, this stops one code from flooding the bot. Layer 2 only — no new dep, no store, no change to core/sessions/KB.
+- [x] app/api/rate_limit.py: fixed-window counter, max 10 messages per 60s, keyed per access code + client IP; dict + lock, entries dropped once their window has passed (same in-memory-with-a-lock shape as the session store, no new abstraction) — done: RateLimiter.check(key) raises the ApiError itself, injectable clock, get_rate_limiter() singleton; a rejected hit isn't counted so knocking can't extend the window
+- [x] Wire it as a router dependency on the two message-sending routes only (POST /api/v1/chat, POST /api/v1/chat/{id}/messages) — reads (GET chat, auth, health) and the contact post stay unlimited — done: per-route `dependencies=[Depends(enforce_message_rate_limit)]`, verified live that /api/v1/auth still returns 200 while messages are blocked
+- [x] errors.py / routes: over the limit → 429 `TOO_MANY_MESSAGES`, "You're sending messages too quickly. Try again later." Distinct from the existing 429 `RATE_LIMITED` (that one means the upstream LLM is busy) — the UI switches on the code, so the two must not collapse into one — done; errors.py needed no change: ApiError already gives every error the {code, message} shape and no file enumerates codes, so the limiter raises ApiError inline the way routes.py does
+- [x] UI: the error banner shows the message for `TOO_MANY_MESSAGES` like the other 429; the failed text is restored into the input so the user can resend after the window — no code change needed: api.js rethrows any {code, message} body and App.jsx's send-failure path already banners err.message and restores the input for every code it doesn't special-case
+- [x] pytest (tests/test_api_rate_limit.py): 10 messages pass and the 11th returns 429 with the {code, message} shape, a different access code isn't affected, the window resets (injected clock, no sleeps) — done: 8 tests; conftest gives each test its own limiter so the singleton doesn't leak across tests
+- [x] Checkpoint: pytest green + curl the 11th message locally and show the real 429 body — 91 tests pass offline; live under MOCK_LLM messages 1-10 returned 200 and the 11th returned 429 {"code":"TOO_MANY_MESSAGES","message":"You're sending messages too quickly. Try again later."}
+
 ## Known issues
 - ~~Fallback card doesn't survive a page refresh~~ — fixed in phase 3: Message.fallback_reason persisted on the session, MessageOut exposes fallback {reason, booking_url}, the UI rebuilds the card from history on reload
 - Contact-form "sent" state is UI-local: after a page reload a fallback card shows the name/email form again even if details were already submitted (resubmitting just overwrites session.contact). Harmless for the demo, no analytics or other service connected.
@@ -83,7 +93,7 @@ Every item below plugs into a layer that already exists, that's the point of the
 2. Redis session store. Today conversations live in one server's memory: fine for a single instance, lost on restart, impossible to share across servers. Redis makes sessions survive restarts and lets many instances serve the same users, required for horizontal scaling, bc any server must be able to answer any chat. Plugs into: a RedisSessionStore implements the same four methods of the SessionStore contract (create/get/save/delete). SessionManager and routes don't change.
 3. Real auth (accounts) replacing the access code gate. The gate is a basic lock, not identity. Accounts give each user an identity, which is what unlocks per user chat history, client-specific answers, and per-user limits. Plugs into: the gate is already a single dependency on the routes, swapping it for a token check swaps one function, and sessions gain an owner.
 4. Contact handoff (CRM / email / Slack). Today a captured lead lands on the session and in the logs, proven end to end, but nobody gets notified. v2 routes it where the team works: email, a Slack ping, or the CRM.
-5. Rate limiting. The basic gate keeps strangers out; rate limiting keeps anyone  from flooding the bot. Plugs into: one dependency in layer 2 counting per code/user,routes unchanged.
+5. Shared rate-limit counters. V1's limiter counts in one server's memory, so it resets on restart and each instance counts on its own. Moving the counter to Redis makes the limit hold across restarts and instances, and per-account limits become possible once accounts exist (3). Plugs into: the limiter is one dependency in layer 2, only its storage changes.
 6. Streaming replies. Answers appear word by word instead of after a pause. Skipped in v1 bc replies are capped 500 tokens, so the pause is short. Plugs into: the LLM call is isolated in ai_service, streaming changes that one function plus the bubble rendering.
 7. Golden QA eval in CI. The /verify-scenarios idea, automated: a bigger fixed question set runs on every push and fails the build if an answer loses grounding, prompt regressions get caught before deploy, not by a user. Plugs into: the skill and the judging pattern already exist; CI just runs them.
 8. Observability stack (Grafana + alerts). The logs are already structured events carrying verdicts, durations, token counts and chat_ids,so a dashboard is configuration, not refactoring: fallback and ungrounded rates per day, latency charts, an alert if grounding errors spike.
